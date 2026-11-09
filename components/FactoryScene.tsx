@@ -1,17 +1,16 @@
-import { Billboard, OrbitControls, Text, useGLTF } from "@react-three/drei";
+import { Billboard, Text as Label3D, OrbitControls, useGLTF } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import type { Mesh } from "three";
+import { Text, useWindowDimensions, View } from "react-native";
+import type { Mesh, MeshBasicMaterial } from "three";
 import { Box3, Color, Vector3 } from "three";
 import type { MachineState, Status } from "../hooks/useFactoryData";
+import { C, STATUS } from "./theme";
 
 const USE_GLB = true;
 const GLB_URL = "/models/machine.glb";
 const GLB_TARGET_SIZE = 2.2;
 const GLB_Y = 0;
-// ================================
-
-const COLORS = { normal: "#22c55e", warning: "#f59e0b", critical: "#ef4444" };
 
 function BoxMachine({ status, rpm }: { status: Status; rpm: number }) {
   const rotor = useRef<Mesh>(null!);
@@ -22,7 +21,7 @@ function BoxMachine({ status, rpm }: { status: Status; rpm: number }) {
     <group>
       <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[1.6, 1, 1.2]} />
-        <meshStandardMaterial color={COLORS[status]} />
+        <meshStandardMaterial color={STATUS[status].color} />
       </mesh>
       <mesh ref={rotor} position={[0, 1.2, 0]}>
         <cylinderGeometry args={[0.4, 0.4, 0.25, 32]} />
@@ -43,18 +42,17 @@ function GlbMachine({ status }: { status: Status }) {
         o.userData.baseColor = o.material.color?.clone();
       }
     });
-
     const box = new Box3().setFromObject(c);
     const size = box.getSize(new Vector3());
     const center = box.getCenter(new Vector3());
-    const s = GLB_TARGET_SIZE / Math.max(size.x, size.y, size.z);
-    c.scale.setScalar(s);
-    c.position.set(-center.x * s, -box.min.y * s, -center.z * s);
+    const k = GLB_TARGET_SIZE / Math.max(size.x, size.y, size.z);
+    c.scale.setScalar(k);
+    c.position.set(-center.x * k, -box.min.y * k, -center.z * k);
     return c;
   }, [scene]);
 
   useEffect(() => {
-    const tint = new Color(COLORS[status]);
+    const tint = new Color(STATUS[status].color);
     model.traverse((o: any) => {
       if (o.isMesh && o.material?.color && o.userData.baseColor) {
         o.material.color
@@ -68,6 +66,23 @@ function GlbMachine({ status }: { status: Status }) {
     <group position={[0, GLB_Y, 0]}>
       <primitive object={model} />
     </group>
+  );
+}
+
+function StatusRing({ status }: { status: Status }) {
+  const ref = useRef<Mesh>(null!);
+  useFrame(({ clock }) => {
+    const mat = ref.current.material as MeshBasicMaterial;
+    mat.opacity =
+      status === "critical"
+        ? 0.45 + 0.55 * Math.abs(Math.sin(clock.elapsedTime * 4))
+        : 1;
+  });
+  return (
+    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+      <ringGeometry args={[1.35, 1.5, 48]} />
+      <meshBasicMaterial color={STATUS[status].color} transparent />
+    </mesh>
   );
 }
 
@@ -105,24 +120,26 @@ function Machine({
         <BoxMachine status={status} rpm={rpm} />
       )}
 
+      <StatusRing status={status} />
+
       {selected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[1.4, 1.55, 48]} />
-          <meshBasicMaterial color="#38bdf8" />
+          <ringGeometry args={[1.65, 1.73, 48]} />
+          <meshBasicMaterial color={C.accent} />
         </mesh>
       )}
 
-      <Billboard position={[0, 2, 0]}>
-        <Text
-          fontSize={0.22}
-          color={selected ? "#38bdf8" : "white"}
-          outlineWidth={0.015}
-          outlineColor="#0f172a"
+      <Billboard position={[0, 2.4, 0]}>
+        <Label3D
+          fontSize={0.24}
+          color={selected ? C.accent : C.text}
+          outlineWidth={0.02}
+          outlineColor="#ffffff"
           anchorX="center"
           anchorY="middle"
         >
           {machine.name}
-        </Text>
+        </Label3D>
       </Billboard>
     </group>
   );
@@ -137,20 +154,41 @@ export default function FactoryScene({
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const height = width < 700 ? 300 : 420;
+
   return (
-    <Canvas camera={{ position: [6, 4.5, 8] }} style={{ height: 460 }}>
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[5, 8, 5]} intensity={1.2} />
-      {machines.map((m) => (
-        <Machine
-          key={m.id}
-          machine={m}
-          selected={m.id === selectedId}
-          onSelect={onSelect}
-        />
-      ))}
-      <gridHelper args={[10, 10]} />
-      <OrbitControls />
-    </Canvas>
+    <View
+      style={{
+        height,
+        borderRadius: 18,
+        overflow: "hidden",
+        backgroundColor: C.canvas,
+        borderWidth: 1,
+        borderColor: C.border,
+      }}
+    >
+      <Canvas camera={{ position: [6, 4.5, 8] }} style={{ height }}>
+        <color attach="background" args={[C.canvas]} />
+        <ambientLight intensity={0.9} />
+        <directionalLight position={[5, 8, 5]} intensity={1.1} />
+        {machines.map((m) => (
+          <Machine
+            key={m.id}
+            machine={m}
+            selected={m.id === selectedId}
+            onSelect={onSelect}
+          />
+        ))}
+        <gridHelper args={[10, 10, "#c3cde2", "#dbe2f0"]} />
+        <OrbitControls />
+      </Canvas>
+
+      <View pointerEvents="none" style={{ position: "absolute", left: 14, bottom: 10 }}>
+        <Text style={{ color: C.muted, fontSize: 12 }}>
+          Drag to rotate · Scroll to zoom · Click an asset to select
+        </Text>
+      </View>
+    </View>
   );
 }

@@ -31,8 +31,8 @@ export type MachineState = MachineInfo & {
 };
 
 export const MACHINES: MachineInfo[] = [
-  { id: "m1", name: "Pump #1", position: [-2, 0, 0] },
-  { id: "m2", name: "Pump #2", position: [2, 0, 0] },
+  { id: "m1", name: "Pump P-101", position: [-2, 0, 0] },
+  { id: "m2", name: "Pump P-102", position: [2, 0, 0] },
 ];
 
 function getStatus(temp: number, vib: number): Status {
@@ -43,9 +43,9 @@ function getStatus(temp: number, vib: number): Status {
 
 function getMessage(temp: number, vib: number): string {
   const causes: string[] = [];
-  if (temp > 75) causes.push(`อุณหภูมิสูง ${temp.toFixed(1)} °C`);
-  if (vib > 5) causes.push(`การสั่นสูง ${vib.toFixed(2)}`);
-  return causes.join(" / ");
+  if (temp > 75) causes.push(`Temperature ${temp.toFixed(1)} °C > ${temp > 85 ? 85 : 75}`);
+  if (vib > 5) causes.push(`Vibration ${vib.toFixed(2)} mm/s > ${vib > 7 ? 7 : 5}`);
+  return causes.join(" · ");
 }
 
 type Sim = {

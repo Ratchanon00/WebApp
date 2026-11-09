@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { MachineState } from "../hooks/useFactoryData";
-
-const COLORS = { normal: "#22c55e", warning: "#f59e0b", critical: "#ef4444" };
+import StatusChip from "./StatusChip";
+import { C, STATUS, T, card } from "./theme";
 
 export default function MachineList({
   machines,
@@ -13,28 +13,40 @@ export default function MachineList({
   onSelect: (id: string) => void;
 }) {
   return (
-    <View style={s.box}>
-      <Text style={s.title}>Machines</Text>
+    <View style={card}>
+      <View style={s.head}>
+        <Text style={T.h2}>Assets</Text>
+        <Text style={s.hint}>Select an asset</Text>
+      </View>
+
+      {machines.length === 0 && <Text style={s.hint}>No assets match your search.</Text>}
+
       {machines.map((m) => {
         const status = m.latest?.status ?? "normal";
+        const selected = m.id === selectedId;
         return (
           <Pressable
             key={m.id}
             onPress={() => onSelect(m.id)}
-            style={[s.item, m.id === selectedId && s.selected]}
+            style={({ pressed }) => [
+              s.item,
+              {
+                borderColor: selected ? C.accent : C.border,
+                backgroundColor: selected ? C.accentSoft : C.surface,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
           >
-            <View style={[s.dot, { backgroundColor: COLORS[status] }]} />
+            <View style={[s.bar, { backgroundColor: STATUS[status].color }]} />
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{m.name}</Text>
-              <Text style={s.sub}>
+              <Text style={[s.sub, T.num]}>
                 {m.latest
-                  ? `${m.latest.temp.toFixed(1)} °C · vib ${m.latest.vibration.toFixed(2)}`
+                  ? `${m.latest.temp.toFixed(0)} °C · ${m.latest.vibration.toFixed(1)} mm/s`
                   : "-"}
               </Text>
             </View>
-            <Text style={[s.status, { color: COLORS[status] }]}>
-              {status.toUpperCase()}
-            </Text>
+            <StatusChip status={status} small />
           </Pressable>
         );
       })}
@@ -43,20 +55,24 @@ export default function MachineList({
 }
 
 const s = StyleSheet.create({
-  box: { flex: 1, backgroundColor: "#1e293b", padding: 12, borderRadius: 8 },
-  title: { color: "white", fontWeight: "700", marginBottom: 8 },
+  head: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginBottom: 12,
+  },
+  hint: { color: C.muted, fontSize: 13 },
   item: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    padding: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "transparent",
+    gap: 12,
+    minHeight: 64,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 8,
   },
-  selected: { borderColor: "#38bdf8", backgroundColor: "#0f172a" },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  name: { color: "white", fontWeight: "600" },
-  sub: { color: "#94a3b8", fontSize: 12 },
-  status: { fontSize: 11, fontWeight: "700" },
+  bar: { width: 5, alignSelf: "stretch", borderRadius: 3 },
+  name: { color: C.text, fontSize: 16, fontWeight: "700" },
+  sub: { color: C.muted, fontSize: 13, marginTop: 2 },
 });
